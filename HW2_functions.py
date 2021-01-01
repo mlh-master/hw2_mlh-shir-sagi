@@ -1,7 +1,12 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from collections import Counter
 from pathlib import Path
+from sklearn.model_selection import StratifiedKFold as SKFold
+from sklearn.metrics import log_loss
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
 import random
 
 def rm_nan_pat(dataframe):
@@ -52,15 +57,14 @@ def col_charts(X_train,X_test,remove_feat, y_train, y_test):
     train = []
     test = []
     Diag = []
-    train_pos_diag = (y_train=='Positive').sum()
+    train_pos_diag = (y_train==1).sum()
     Diag.append((train_pos_diag/len(y_train))*100)
-    test_pos_diag = (y_test=='Positive').sum()
+    test_pos_diag = (y_test==1).sum()
     Diag.append((test_pos_diag/len(y_test))*100)
     for feat in feats:
-        train.append((((X_trn[feat] == 'Yes' ).sum()+(X_trn[feat] == 1).sum())/len(X_trn[feat]))*100)
-        test.append((((X_tst[feat] == 'Yes' ).sum()+(X_tst[feat] == 1).sum())/len(X_tst[feat]))*100)
+        train.append((((X_trn[feat] == 1).sum())/len(X_trn[feat]))*100)
+        test.append((((X_tst[feat] == 1).sum())/len(X_tst[feat]))*100)
 
-    # create plot
     fig, ax = plt.subplots()
     index = np.arange(n_groups)
     bar_width = 0.35
@@ -95,67 +99,150 @@ def feat_lable(X_train,remove_feat, y_train):
              2. Bar plot of % of positive diagnosis for train and test set
     """
     X_trn = X_train.copy()
+    non_binary_feat = remove_feat
     del X_trn[remove_feat]
     feats = X_trn.columns
-    count = 1
+    f_n_d_n = []
+    f_n_d_p = []
+    f_y_d_n = []
+    f_y_d_p = []
     for feat in feats:
-        f_n_d_n = 0
-        f_n_d_p = 0
-        f_y_d_n = 0
-        f_y_d_p = 0
+        f_n_d_n_count = 0
+        f_n_d_p_count = 0
+        f_y_d_n_count = 0
+        f_y_d_p_count = 0
         for idx, v in enumerate(X_trn[feat]):
             a = v
             b = y_train[idx]
-            if (v == 'No' or v == 0 or v == 'Female') and y_train[idx] == 'Negative':
-                f_n_d_n = f_n_d_n +1
-            elif (v == 'No' or v == 0 or v == 'Female') and y_train[idx] == 'Positive':
-                f_n_d_p = f_n_d_p + 1
-            elif (v == 'Yes' or v == 1 or v == 'Male') and y_train[idx] == 'Negative':
-                f_y_d_n = f_y_d_n + 1
-            elif (v == 'Yes' or v == 1 or v == 'Male') and y_train[idx] == 'Positive':
-                f_y_d_p = f_y_d_p + 1
-        feat_no = []
-        feat_yes = []
-        feat_no.append(f_n_d_n)
-        feat_no.append(f_n_d_p)
-        feat_yes.append(f_y_d_n)
-        feat_yes.append(f_y_d_p)
-        index = np.arange(2)
-        bar_width = 0.35
-        opacity = 0.8
-        ax1 = plt.subplot(4416)
-        # plt.bar(['Train', 'Test'], feat_no, bar_width, color=['steelblue', 'lightskyblue'])
-        rects1 = plt.bar(index, feat_no, bar_width, alpha=opacity, color='steelblue', label='Train set')
-        rects2 = plt.bar(index + bar_width, feat_yes, bar_width, alpha=opacity, color='lightskyblue', label='Test set')
-        plt.xlabel('Features')
-        plt.ylabel('Count')
-        count = count + 1
-        plt.show()
+            if v == 0 and y_train[idx] == 0:
+                f_n_d_n_count = f_n_d_n_count +1
+            elif v == 0 and y_train[idx] == 1:
+                f_n_d_p_count = f_n_d_p_count + 1
+            elif v == 1 and y_train[idx] == 0:
+                f_y_d_n_count = f_y_d_n_count + 1
+            elif v == 1 and y_train[idx] == 1:
+                f_y_d_p_count = f_y_d_p_count + 1
+        f_n_d_n.append(f_n_d_n_count)
+        f_n_d_p.append(f_n_d_p_count)
+        f_y_d_n.append(f_y_d_n_count)
+        f_y_d_p.append(f_y_d_p_count)
+    # mat = np.row_stack((f_n_d_n, f_n_d_p,f_y_d_n,f_y_d_p))
+    index = np.arange(2)
+    bar_width = 0.35
+    opacity = 0.8
+    fig, axes = plt.subplots(4, 4, sharex=True, sharey=True, figsize=(15,15))
+    for i, ax in enumerate(axes.flatten()):
+        rects1 = ax.bar(index, [f_n_d_n[i],f_y_d_n[i]], bar_width, alpha=opacity, color='steelblue', label='Negative')
+        rects2 = ax.bar(index + bar_width, [f_n_d_p[i],f_y_d_p[i]], bar_width, alpha=opacity, color='lightskyblue', label='Positive')
+        if i ==1:
+            labels = ['Female', 'Male']
+        else:
+            labels = ['No', 'Yes']
+        x = np.arange(len(labels))
+        ax.set_ylabel('Count')
+        if i==0:
+            ax.set_xlabel(feats[i]+'(Male)')
+        else:
+            ax.set_xlabel(feats[i])
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+        ax.legend(prop={"size": 8}, loc='upper right')
+    plt.show()
 
-        x = np.arange(11)
-        y = np.random.rand(len(x), 9) * 10
+    # fig, ax = plt.subplots()
+    # index = np.arange(16,91)
+    # neg_diag = [i for i, x in enumerate(y_train) if x == 0]
+    # pos_diag = [i for i, x in enumerate(y_train) if x == 1]
+    #
+    # bins = 100
+    # feat = 'Width'
+    # plt.hist(X_train['Age'].loc[neg_diag], bins, density=True, alpha=0.5, label='Normal')
+    # plt.hist(X_train[feat].loc[pos_diag], bins, density=True, alpha=0.5, label='Suspect')
+    # plt.xlabel('Histigram Width')
+    # plt.ylabel('Probabilty')
+    # plt.legend(loc='upper right')
+    # plt.show()
+    #
+    #
+    # X_train_neg = X_train.index.isin(neg_diag)
+    # X_train_pos = X_train.index.isin(pos_diag)
+    # Ages_count = Counter(X_train['Age'])
+    # Ages = list(Ages_count)
+    # Ages = sorted(Ages)
+    # Ages_pos = []
+    # Ages_neg = []
+    # for Age in Ages:
+    #     count_pos = 0
+    #     count_neg = 0
+    #     for idx in X_train['Age']:
+    #         if idx==Age and y_train[idx]==0:
+    #             count_neg = count_neg+1
+    #         elif idx==Age and y_train[idx]==1:
+    #             count_pos = count_pos+1
+    #     Ages_neg.append(count_neg)
+    #     Ages_pos.append(count_pos)
 
-        fig, axes = plt.subplots(3, 3, sharex=True, sharey=True)
-
-        for i, ax in enumerate(axes.flatten()):
-            ax.bar(x, y[:, i], color=plt.cm.Paired(i / 10.))
-
-        plt.show()
-
-
-    # ax1 = plt.subplot(441)
+    #
+    # bar_width = 0.35
+    # opacity = 0.8
     # rects1 = plt.bar(index, train, bar_width,alpha=opacity,color='steelblue',label='Train set')
     # rects2 = plt.bar(index + bar_width, test, bar_width,alpha=opacity,color='lightskyblue',label='Test set')
-    # plt.hist(nsd_res[x], bins, )
-    # ax1.set(ylabel='Count', xlabel='Value', title='Feature 1 scaled')
-    # ax2 = plt.subplot(442)
-    # plt.hist(nsd_res[y], bins, color='orange')
-    # ax2.set(ylabel='Count', xlabel='Value', title='Feature 2 scaled')
-    # ax3 = plt.subplot(443)
-    # plt.hist(CTG_features[x], bins)
-    # ax3.set(ylabel='Count', xlabel='Value', title='Feature 1 unscaled')
-    # ax4 = plt.subplot(444)
-    # plt.hist(CTG_features[y], bins, color='orange')
-    # ax4.set(ylabel='Count', xlabel='Value', title='Feature 2 unscaled')
+    # plt.xlabel('Features')
+    # plt.ylabel('Positive %')
+    # plt.title('% of positive feature')
+    # plt.yim((1l, 100))
+    # plt.xticks(index + bar_width, range(1,len(feats)+1))
+    # plt.legend()
+    # plt.tight_layout()
     # plt.show()
+
+
+
+
+    # bins = 100
+    # feat1 = X_train[[non_binary_feat]]
+    # idx_1 = (y_train == 0).index[(y_train == 0)['Diagnoisis'] == True].tolist()
+    # idx_2 = (y_train == 1).index[(y_train == 1)['Diagnoisis'] == True].tolist()
+    # plt.hist(feat1.loc[idx_1], bins, density=True, alpha=0.5, label='Negative')
+    # plt.hist(feat1.loc[idx_2], bins, density=True, alpha=0.5, label='Positive')
+    # plt.xlabel('Histigram Width')
+    # plt.ylabel('Probabilty')
+    # plt.legend(loc='upper right')
+    # plt.show()
+
+
     return
+
+
+def cv_kfold(X, y, C, penalty, K):
+    """
+
+    :param X: Training set samples
+    :param y: Training set labels
+    :param C: A list of regularization parameters
+    :param penalty: A list of types of norm
+    :param K: Number of folds
+    :param mode: Mode of normalization (parameter of norm_standard function in clean_data module)
+    :return: A dictionary as explained in the notebook
+    """
+    random.seed(10)
+    kf = SKFold(n_splits=K)
+    validation_dict = []
+    for c in C:
+        for p in penalty:
+            logreg = LogisticRegression(solver='saga', penalty=p, C=c, max_iter=10000, multi_class='ovr')
+            AUC_vec = np.zeros(K)
+            k = 0
+            for train_idx, val_idx in kf.split(X, y):
+                x_train, x_val = X.iloc[train_idx], X.iloc[val_idx]
+                # ------------------ IMPLEMENT YOUR CODE HERE:-----------------------------
+                y_train, y_val = y[train_idx], y[val_idx]
+                logreg.fit(x_train, y_train)
+                y_pred = logreg.predict(x_val)
+                y_pred_proba= logreg.predict_proba(x_val)
+                AUC_vec[k] = roc_auc_score(y_val, y_pred_proba[:,1])
+                k = k + 1
+            validation_dict.append({'C': c, 'penalty': p, 'AUC': np.mean(AUC_vec)})
+
+        # --------------------------------------------------------------------------
+    return validation_dict
