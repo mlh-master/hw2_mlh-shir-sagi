@@ -54,7 +54,7 @@ scaler = MinMaxScaler()
 X_train[['Age']] = scaler.fit_transform(X_train[['Age']])
 X_test[['Age']] = scaler.transform(X_test[['Age']])
 
-C = [0.001,0.01,0.25,0.5,0.75,1,1.25,1.5,1.75,2,3,4,5,10,20,50] # make a list of up to 6 different values of regularization parameters and examine their effects
+C = [0.001,0.01,0.5,1,1.5,2,3,4,5,10,20,50,100,1000]# make a list of up to 6 different values of regularization parameters and examine their effects
 K = 5 # choose a number of folds
 val_dict = cv_kfold(X_train, y_train, C=C, penalty=['l1', 'l2'], K=K)
 for idx, elem in enumerate(val_dict):
@@ -68,58 +68,177 @@ penalty = 'l2'
 logreg = LogisticRegression(solver='saga', multi_class='ovr', penalty=penalty, C=C, max_iter=10000)
 logreg.fit(X_train, y_train)
 
-y_pred_train = logreg.predict(X_train)
-y_pred_proba_train = logreg.predict_proba(X_train)
-AUC_train = roc_auc_score(y_train, y_pred_proba_train[:,1])
-loss_train = log_loss(y_train, y_pred_train)
+y_pred_train_LR = logreg.predict(X_train)
+y_pred_proba_train_LR = logreg.predict_proba(X_train)
+AUC_train_LR = roc_auc_score(y_train, y_pred_proba_train_LR[:,1])
+loss_train_LR = log_loss(y_train, y_pred_train_LR)
 
-y_pred_test = logreg.predict(X_test)
-y_pred_proba_test = logreg.predict_proba(X_test)
-AUC_test = roc_auc_score(y_test, y_pred_proba_test[:,1])
-loss_test = log_loss(y_test, y_pred_test)
+y_pred_test_LR = logreg.predict(X_test)
+y_pred_proba_test_LR = logreg.predict_proba(X_test)
+AUC_test_LR = roc_auc_score(y_test, y_pred_proba_test_LR[:,1])
+loss_test_LR = log_loss(y_test, y_pred_test_LR)
 
-cnf_matrix_train = metrics.confusion_matrix(y_pred_train, y_train)
+cnf_matrix_train = metrics.confusion_matrix(y_pred_train_LR, y_train)
 ax1 = plt.subplot()
 sns.heatmap(cnf_matrix_train, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
 ax1.set(ylabel='True labels', xlabel='Predicted labels')
 plt.show()
 
 print('Evaluation metrics for the training set:')
-print('AUC is: %.3f' % (AUC_train))
-print('The loss is: %.3f' % (loss_train))
-print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train, average='macro'))) + "%")
-print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train))) + "%")
+print('AUC is: %.3f' % (AUC_train_LR))
+print('The loss is: %.3f' % (loss_train_LR))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train_LR, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train_LR))) + "%")
 
-cnf_matrix_test = metrics.confusion_matrix(y_pred_test, y_test)
+cnf_matrix_test = metrics.confusion_matrix(y_pred_test_LR, y_test)
 ax1 = plt.subplot()
 sns.heatmap(cnf_matrix_test, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
 ax1.set(ylabel='True labels', xlabel='Predicted labels')
 plt.show()
 
 print('Evaluation metrics for the test set:')
-print('AUC is: %.3f' % (AUC_test))
-print('The loss is: %.3f' % (loss_test))
-print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test, average='macro'))) + "%")
-print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test))) + "%")
+print('AUC is: %.3f' % (AUC_test_LR))
+print('The loss is: %.3f' % (loss_test_LR))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test_LR, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_LR))) + "%")
 
 from sklearn.model_selection import StratifiedKFold
-n_splits = 3
+n_splits = 5
 skf = StratifiedKFold(n_splits=n_splits, random_state=10, shuffle=True)
 
 from sklearn.svm import SVC
-from sklearn import svm
 from sklearn.model_selection import GridSearchCV
-# svc = SVC(probability=True)
-svc = svm.SVC(probability=True)
-C = np.array([0.001, 0.01, 1, 10, 100, 1000])
-svm_lin = GridSearchCV(estimator=svc,
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import confusion_matrix
+svc = SVC(probability=True)
+pipe = Pipeline(steps=[('svm', svc)])
+C = [0.001,0.01,0.5,1,1.5,2,3,4,5,10,20,50,100,1000]
+svm_lin = GridSearchCV(estimator=pipe,
              param_grid={'svm__kernel':['linear'], 'svm__C':C},
              scoring=['accuracy','f1','precision','recall','roc_auc'],
              cv=skf, refit='roc_auc', verbose=3, return_train_score=True)
 svm_lin.fit(X_train, y_train)
 best_svm_lin = svm_lin.best_estimator_
 print(svm_lin.best_params_)
-# clf_type = ['linear']
-# plot_radar(svm_lin,clf_type)
+
+y_pred_train_svm_lin = best_svm_lin.predict(X_train)
+y_pred_proba_train_svm_lin = best_svm_lin.predict_proba(X_train)
+AUC_train_svm_lin = roc_auc_score(y_train, y_pred_proba_train_svm_lin[:,1])
+loss_train_svm_lin = log_loss(y_train, y_pred_train_svm_lin)
+
+y_pred_test_svm_lin = best_svm_lin.predict(X_test)
+y_pred_proba_test_svm_lin = best_svm_lin.predict_proba(X_test)
+AUC_test_svm_lin = roc_auc_score(y_test, y_pred_proba_test_svm_lin[:,1])
+loss_test_svm_lin = log_loss(y_test, y_pred_test_svm_lin)
+
+cnf_matrix_train = metrics.confusion_matrix(y_pred_train_svm_lin, y_train)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_train, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_train_svm_lin))
+print('The loss is: %.3f' % (loss_train_svm_lin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train_svm_lin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train_svm_lin))) + "%")
+
+
+cnf_matrix_test = metrics.confusion_matrix(y_pred_test_svm_lin, y_test)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_test, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_test_svm_lin))
+print('The loss is: %.3f' % (loss_test_svm_lin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test_svm_lin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_svm_lin))) + "%")
+
+
+C = [0.001,0.01,0.5,1,1.5,2,3,4,5,10,20,50,100,1000]
+svm_nonlin = GridSearchCV(estimator=pipe,
+             param_grid={'svm__kernel':['rbf','poly'], 'svm__C':C, 'svm__degree':[3], 'svm__gamma':['auto','scale']},
+             scoring=['accuracy','f1','precision','recall','roc_auc'],
+             cv=skf, refit='roc_auc', verbose=3, return_train_score=True)
+svm_nonlin.fit(X_train, y_train)
+best_svm_nonlin = svm_nonlin.best_estimator_
+print(svm_nonlin.best_params_)
+
+y_pred_train_svm_nonlin = best_svm_nonlin.predict(X_train)
+y_pred_proba_train_svm_nonlin = best_svm_nonlin.predict_proba(X_train)
+AUC_train_svm_nonlin = roc_auc_score(y_train, y_pred_proba_train_svm_nonlin[:,1])
+loss_train_svm_nonlin = log_loss(y_train, y_pred_train_svm_nonlin)
+
+y_pred_test_svm_nonlin = best_svm_nonlin.predict(X_test)
+y_pred_proba_test_svm_nonlin = best_svm_nonlin.predict_proba(X_test)
+AUC_test_svm_nonlin = roc_auc_score(y_test, y_pred_proba_test_svm_nonlin[:,1])
+loss_test_svm_nonlin = log_loss(y_test, y_pred_test_svm_nonlin)
+
+
+cnf_matrix_train = metrics.confusion_matrix(y_pred_train_svm_nonlin, y_train)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_train, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_train_svm_nonlin))
+print('The loss is: %.3f' % (loss_train_svm_nonlin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train_svm_nonlin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train_svm_nonlin))) + "%")
+
+
+cnf_matrix_test = metrics.confusion_matrix(y_pred_test_svm_nonlin, y_test)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_test, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_test_svm_nonlin))
+print('The loss is: %.3f' % (loss_test_svm_nonlin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test_svm_nonlin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_svm_nonlin))) + "%")
+
+
+from sklearn.ensemble import RandomForestClassifier as rfc
+clf = rfc(n_estimators=10)
+clf.fit(X_train, y_train)
+
+y_pred_train_rfc = clf.predict(X_train)
+y_pred_proba_train_rfc = clf.predict_proba(X_train)
+AUC_train_rfc = roc_auc_score(y_train, y_pred_proba_train_rfc[:,1])
+loss_train_rfc = log_loss(y_train, y_pred_train_rfc)
+
+y_pred_test_rfc = clf.predict(X_test)
+y_pred_proba_test_rfc = clf.predict_proba(X_test)
+AUC_test_rfc = roc_auc_score(y_test, y_pred_proba_test_rfc[:,1])
+loss_test_rfc = log_loss(y_test, y_pred_test_rfc)
+
+cnf_matrix_train = metrics.confusion_matrix(y_pred_train_rfc, y_train)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_train, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_train_rfc))
+print('The loss is: %.3f' % (loss_train_rfc))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train_rfc, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train_rfc))) + "%")
+
+cnf_matrix_test = metrics.confusion_matrix(y_pred_test_rfc, y_test)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_test, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_test_rfc))
+print('The loss is: %.3f' % (loss_test_rfc))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test_rfc, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_rfc))) + "%")
+
+feature_importance = clf.feature_importances_
+print(feature_importance)
+
+
+
 print('hi')
 print('hi')
