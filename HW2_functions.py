@@ -83,6 +83,7 @@ def col_charts(X_train,X_test,remove_feat, y_train, y_test):
     bar_width = 0.5
     plt.bar(['Train', 'Test'], Diag,bar_width,color=['steelblue', 'lightskyblue'])
     plt.ylabel('Positive %')
+    plt.title('% of positive diagnosis')
     plt.ylim((1, 100))
     plt.show()
     return
@@ -126,7 +127,6 @@ def feat_lable(X_train,remove_feat, y_train):
         f_n_d_p.append(f_n_d_p_count)
         f_y_d_n.append(f_y_d_n_count)
         f_y_d_p.append(f_y_d_p_count)
-    # mat = np.row_stack((f_n_d_n, f_n_d_p,f_y_d_n,f_y_d_p))
     index = np.arange(2)
     bar_width = 0.35
     opacity = 0.8
@@ -246,3 +246,19 @@ def cv_kfold(X, y, C, penalty, K):
 
         # --------------------------------------------------------------------------
     return validation_dict
+
+def plt_2d_pca(X_pca,y):
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111, aspect='equal')
+    ax.scatter(X_pca[y==0, 0], X_pca[y==0, 1], color='b')
+    ax.scatter(X_pca[y==1, 0], X_pca[y==1, 1], color='r')
+    ax.legend(('Negative','Positive'))
+    ax.plot([0], [0], "ko")
+    ax.arrow(0, 0, 0, 1, head_width=0.05, length_includes_head=True, head_length=0.1, fc='k', ec='k')
+    ax.arrow(0, 0, 1, 0, head_width=0.05, length_includes_head=True, head_length=0.1, fc='k', ec='k')
+    ax.set_xlabel('$U_1$')
+    ax.set_ylabel('$U_2$')
+    ax.set_title('2D PCA')
+    plt.show()
+
+    return

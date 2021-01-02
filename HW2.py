@@ -22,6 +22,13 @@ T1D_df.columns = ['Age', 'Gender', 'Increased Urination', 'Increased Thirst',
        'Partial Paresis', 'Muscle Stiffness', 'Hair Loss', 'Obesity',
        'Family History', 'Diagnosis']
 
+# # T1D_df['Age'].value_counts().plot.bar()
+# # plt.show()
+# sns.barplot(x=T1D_df.Age.value_counts().index, y=T1D_df.Age.value_counts())
+# # sns.countplot(data=T1D_df, x='Age', order=T1D_df.Age.value_counts().index)
+# # ax = sns.barplot(x="Age", y=T1D_df.Age.value_counts(), hue="Diagnosis", data=T1D_df)
+# plt.show()
+
 
 T1D_feats = T1D_df.copy()
 del T1D_feats['Diagnosis']
@@ -43,6 +50,8 @@ ft_lb(X_train,remove_feat, y_train)
 from HW2_functions import cv_kfold
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
+X_train_notscl = X_train.copy()
+X_test_notscl = X_test.copy()
 scaler = MinMaxScaler()
 # #scaler = StandardScaler()
 # features_df = X_train.copy()
@@ -109,6 +118,7 @@ skf = StratifiedKFold(n_splits=n_splits, random_state=10, shuffle=True)
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import hinge_loss
 from sklearn.metrics import confusion_matrix
 svc = SVC(probability=True)
 pipe = Pipeline(steps=[('svm', svc)])
@@ -124,12 +134,12 @@ print(svm_lin.best_params_)
 y_pred_train_svm_lin = best_svm_lin.predict(X_train)
 y_pred_proba_train_svm_lin = best_svm_lin.predict_proba(X_train)
 AUC_train_svm_lin = roc_auc_score(y_train, y_pred_proba_train_svm_lin[:,1])
-loss_train_svm_lin = log_loss(y_train, y_pred_train_svm_lin)
+loss_train_svm_lin = hinge_loss(y_train, y_pred_train_svm_lin)
 
 y_pred_test_svm_lin = best_svm_lin.predict(X_test)
 y_pred_proba_test_svm_lin = best_svm_lin.predict_proba(X_test)
 AUC_test_svm_lin = roc_auc_score(y_test, y_pred_proba_test_svm_lin[:,1])
-loss_test_svm_lin = log_loss(y_test, y_pred_test_svm_lin)
+loss_test_svm_lin = hinge_loss(y_test, y_pred_test_svm_lin)
 
 cnf_matrix_train = metrics.confusion_matrix(y_pred_train_svm_lin, y_train)
 ax1 = plt.subplot()
@@ -167,12 +177,12 @@ print(svm_nonlin.best_params_)
 y_pred_train_svm_nonlin = best_svm_nonlin.predict(X_train)
 y_pred_proba_train_svm_nonlin = best_svm_nonlin.predict_proba(X_train)
 AUC_train_svm_nonlin = roc_auc_score(y_train, y_pred_proba_train_svm_nonlin[:,1])
-loss_train_svm_nonlin = log_loss(y_train, y_pred_train_svm_nonlin)
+loss_train_svm_nonlin = hinge_loss(y_train, y_pred_train_svm_nonlin)
 
 y_pred_test_svm_nonlin = best_svm_nonlin.predict(X_test)
 y_pred_proba_test_svm_nonlin = best_svm_nonlin.predict_proba(X_test)
 AUC_test_svm_nonlin = roc_auc_score(y_test, y_pred_proba_test_svm_nonlin[:,1])
-loss_test_svm_nonlin = log_loss(y_test, y_pred_test_svm_nonlin)
+loss_test_svm_nonlin = hinge_loss(y_test, y_pred_test_svm_nonlin)
 
 
 cnf_matrix_train = metrics.confusion_matrix(y_pred_train_svm_nonlin, y_train)
@@ -206,12 +216,12 @@ clf.fit(X_train, y_train)
 y_pred_train_rfc = clf.predict(X_train)
 y_pred_proba_train_rfc = clf.predict_proba(X_train)
 AUC_train_rfc = roc_auc_score(y_train, y_pred_proba_train_rfc[:,1])
-loss_train_rfc = log_loss(y_train, y_pred_train_rfc)
+loss_train_rfc = hinge_loss(y_train, y_pred_train_rfc)
 
 y_pred_test_rfc = clf.predict(X_test)
 y_pred_proba_test_rfc = clf.predict_proba(X_test)
 AUC_test_rfc = roc_auc_score(y_test, y_pred_proba_test_rfc[:,1])
-loss_test_rfc = log_loss(y_test, y_pred_test_rfc)
+loss_test_rfc = hinge_loss(y_test, y_pred_test_rfc)
 
 cnf_matrix_train = metrics.confusion_matrix(y_pred_train_rfc, y_train)
 ax1 = plt.subplot()
@@ -239,6 +249,293 @@ feature_importance = clf.feature_importances_
 print(feature_importance)
 
 
+from sklearn.decomposition import PCA
+from HW2_functions import plt_2d_pca
+n_components = 2
+pca = PCA(n_components=n_components, whiten=True)
+scaler = StandardScaler()
+X_train_stdscl = scaler.fit_transform(X_train_notscl)
+X_test_stdscl = scaler.transform(X_test_notscl)
+X_train_pca = pca.fit_transform(X_train_stdscl)
+X_test_pca = pca.transform(X_test_stdscl)
+
+plt_2d_pca(X_train_pca[:,0:2],y_train)
+plt_2d_pca(X_test_pca[:,0:2],y_test)
+
+# LR
+C = 1
+penalty = 'l2'
+logreg = LogisticRegression(solver='saga', multi_class='ovr', penalty=penalty, C=C, max_iter=10000)
+logreg.fit(X_train_pca, y_train)
+
+y_pred_train_pca_LR = logreg.predict(X_train_pca)
+y_pred_proba_train_pca_LR = logreg.predict_proba(X_train_pca)
+AUC_train_pca_LR = roc_auc_score(y_train, y_pred_proba_train_pca_LR[:,1])
+loss_train_pca_LR = log_loss(y_train, y_pred_train_pca_LR)
+
+y_pred_test_pca_LR = logreg.predict(X_test_pca)
+y_pred_proba_test_pca_LR = logreg.predict_proba(X_test_pca)
+AUC_test_pca_LR = roc_auc_score(y_test, y_pred_proba_test_pca_LR[:,1])
+loss_test_pca_LR = log_loss(y_test, y_pred_test_pca_LR)
+
+cnf_matrix_train = metrics.confusion_matrix(y_pred_train_pca_LR, y_train)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_train, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('Evaluation metrics for the training set:')
+print('AUC is: %.3f' % (AUC_train_pca_LR))
+print('The loss is: %.3f' % (loss_train_pca_LR))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train_pca_LR, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train_pca_LR))) + "%")
+
+cnf_matrix_test = metrics.confusion_matrix(y_pred_test_pca_LR, y_test)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_test, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('Evaluation metrics for the test set:')
+print('AUC is: %.3f' % (AUC_test_pca_LR))
+print('The loss is: %.3f' % (loss_test_pca_LR))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test_pca_LR, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_pca_LR))) + "%")
+
+
+# SVM linear
+svc = SVC(probability=True)
+pipe = Pipeline(steps=[('svm', svc)])
+C = [0.001,0.01,0.5,1,1.5,2,3,4,5,10,20,50,100,1000]
+svm_lin = GridSearchCV(estimator=pipe,
+             param_grid={'svm__kernel':['linear'], 'svm__C':C},
+             scoring=['accuracy','f1','precision','recall','roc_auc'],
+             cv=skf, refit='roc_auc', verbose=3, return_train_score=True)
+svm_lin.fit(X_train_pca, y_train)
+best_svm_lin = svm_lin.best_estimator_
+print(svm_lin.best_params_)
+
+y_pred_train_pca_svm_lin = best_svm_lin.predict(X_train_pca)
+y_pred_proba_train_pca_svm_lin = best_svm_lin.predict_proba(X_train_pca)
+AUC_train_pca_svm_lin = roc_auc_score(y_train, y_pred_proba_train_pca_svm_lin[:,1])
+loss_train_pca_svm_lin = hinge_loss(y_train, y_pred_train_pca_svm_lin)
+
+y_pred_test_pca_svm_lin = best_svm_lin.predict(X_test_pca)
+y_pred_proba_test_pca_svm_lin = best_svm_lin.predict_proba(X_test_pca)
+AUC_test_pca_svm_lin = roc_auc_score(y_test, y_pred_proba_test_pca_svm_lin[:,1])
+loss_test_pca_svm_lin = hinge_loss(y_test, y_pred_test_pca_svm_lin)
+
+cnf_matrix_train = metrics.confusion_matrix(y_pred_train_pca_svm_lin, y_train)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_train, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_train_pca_svm_lin))
+print('The loss is: %.3f' % (loss_train_pca_svm_lin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train_pca_svm_lin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train_pca_svm_lin))) + "%")
+
+
+cnf_matrix_test = metrics.confusion_matrix(y_pred_test_pca_svm_lin, y_test)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_test, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_test_pca_svm_lin))
+print('The loss is: %.3f' % (loss_test_pca_svm_lin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test_pca_svm_lin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_pca_svm_lin))) + "%")
+
+
+
+
+C = [0.001,0.01,0.5,1,1.5,2,3,4,5,10,20,50,100,1000]
+svm_nonlin = GridSearchCV(estimator=pipe,
+             param_grid={'svm__kernel':['rbf','poly'], 'svm__C':C, 'svm__degree':[3], 'svm__gamma':['auto','scale']},
+             scoring=['accuracy','f1','precision','recall','roc_auc'],
+             cv=skf, refit='roc_auc', verbose=3, return_train_score=True)
+svm_nonlin.fit(X_train_pca, y_train)
+best_svm_nonlin = svm_nonlin.best_estimator_
+print(svm_nonlin.best_params_)
+
+y_pred_train_pca_svm_nonlin = best_svm_nonlin.predict(X_train_pca)
+y_pred_proba_train_pca_svm_nonlin = best_svm_nonlin.predict_proba(X_train_pca)
+AUC_train_pca_svm_nonlin = roc_auc_score(y_train, y_pred_proba_train_pca_svm_nonlin[:,1])
+loss_train_pca_svm_nonlin = hinge_loss(y_train, y_pred_train_pca_svm_nonlin)
+
+y_pred_test_pca_svm_nonlin = best_svm_nonlin.predict(X_test_pca)
+y_pred_proba_test_pca_svm_nonlin = best_svm_nonlin.predict_proba(X_test_pca)
+AUC_test_pca_svm_nonlin = roc_auc_score(y_test, y_pred_proba_test_pca_svm_nonlin[:,1])
+loss_test_pca_svm_nonlin = hinge_loss(y_test, y_pred_test_pca_svm_nonlin)
+
+
+cnf_matrix_train = metrics.confusion_matrix(y_pred_train_pca_svm_nonlin, y_train)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_train, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_train_pca_svm_nonlin))
+print('The loss is: %.3f' % (loss_train_pca_svm_nonlin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train_pca_svm_nonlin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train_pca_svm_nonlin))) + "%")
+
+
+cnf_matrix_test = metrics.confusion_matrix(y_pred_test_pca_svm_nonlin, y_test)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_test, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_test_pca_svm_nonlin))
+print('The loss is: %.3f' % (loss_test_pca_svm_nonlin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test_pca_svm_nonlin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_pca_svm_nonlin))) + "%")
+
+
+
+
+
+
+
+# 2 Best feats
+X_train_2fts = X_train[['Increased Urination', 'Increased Thirst']]
+X_test_2fts = X_test[['Increased Urination', 'Increased Thirst']]
+
+# LR
+C = 1
+penalty = 'l2'
+logreg = LogisticRegression(solver='saga', multi_class='ovr', penalty=penalty, C=C, max_iter=10000)
+logreg.fit(X_train_2fts, y_train)
+
+y_pred_train_2fts_LR = logreg.predict(X_train_2fts)
+y_pred_proba_train_2fts_LR = logreg.predict_proba(X_train_2fts)
+AUC_train_2fts_LR = roc_auc_score(y_train, y_pred_proba_train_2fts_LR[:,1])
+loss_train_2fts_LR = log_loss(y_train, y_pred_train_2fts_LR)
+
+y_pred_test_2fts_LR = logreg.predict(X_test_2fts)
+y_pred_proba_test_2fts_LR = logreg.predict_proba(X_test_2fts)
+AUC_test_2fts_LR = roc_auc_score(y_test, y_pred_proba_test_2fts_LR[:,1])
+loss_test_2fts_LR = log_loss(y_test, y_pred_test_2fts_LR)
+
+cnf_matrix_train = metrics.confusion_matrix(y_pred_train_2fts_LR, y_train)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_train, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('Evaluation metrics for the training set:')
+print('AUC is: %.3f' % (AUC_train_2fts_LR))
+print('The loss is: %.3f' % (loss_train_2fts_LR))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train_2fts_LR, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train_2fts_LR))) + "%")
+
+cnf_matrix_test = metrics.confusion_matrix(y_pred_test_2fts_LR, y_test)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_test, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('Evaluation metrics for the test set:')
+print('AUC is: %.3f' % (AUC_test_2fts_LR))
+print('The loss is: %.3f' % (loss_test_2fts_LR))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test_2fts_LR, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_2fts_LR))) + "%")
+
+
+# SVM linear
+svc = SVC(probability=True)
+pipe = Pipeline(steps=[('svm', svc)])
+C = [0.001,0.01,0.5,1,1.5,2,3,4,5,10,20,50,100,1000]
+svm_lin = GridSearchCV(estimator=pipe,
+             param_grid={'svm__kernel':['linear'], 'svm__C':C},
+             scoring=['accuracy','f1','precision','recall','roc_auc'],
+             cv=skf, refit='roc_auc', verbose=3, return_train_score=True)
+svm_lin.fit(X_train_2fts, y_train)
+best_svm_lin = svm_lin.best_estimator_
+print(svm_lin.best_params_)
+
+y_pred_train_2fts_svm_lin = best_svm_lin.predict(X_train_2fts)
+y_pred_proba_train_2fts_svm_lin = best_svm_lin.predict_proba(X_train_2fts)
+AUC_train_2fts_svm_lin = roc_auc_score(y_train, y_pred_proba_train_2fts_svm_lin[:,1])
+loss_train_2fts_svm_lin = hinge_loss(y_train, y_pred_train_2fts_svm_lin)
+
+y_pred_test_2fts_svm_lin = best_svm_lin.predict(X_test_2fts)
+y_pred_proba_test_2fts_svm_lin = best_svm_lin.predict_proba(X_test_2fts)
+AUC_test_2fts_svm_lin = roc_auc_score(y_test, y_pred_proba_test_2fts_svm_lin[:,1])
+loss_test_2fts_svm_lin = hinge_loss(y_test, y_pred_test_2fts_svm_lin)
+
+cnf_matrix_train = metrics.confusion_matrix(y_pred_train_2fts_svm_lin, y_train)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_train, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_train_2fts_svm_lin))
+print('The loss is: %.3f' % (loss_train_2fts_svm_lin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train_2fts_svm_lin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train_2fts_svm_lin))) + "%")
+
+
+cnf_matrix_test = metrics.confusion_matrix(y_pred_test_2fts_svm_lin, y_test)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_test, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_test_2fts_svm_lin))
+print('The loss is: %.3f' % (loss_test_2fts_svm_lin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test_2fts_svm_lin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_2fts_svm_lin))) + "%")
+
+
+
+
+C = [0.001,0.01,0.5,1,1.5,2,3,4,5,10,20,50,100,1000]
+svm_nonlin = GridSearchCV(estimator=pipe,
+             param_grid={'svm__kernel':['rbf','poly'], 'svm__C':C, 'svm__degree':[3], 'svm__gamma':['auto','scale']},
+             scoring=['accuracy','f1','precision','recall','roc_auc'],
+             cv=skf, refit='roc_auc', verbose=3, return_train_score=True)
+svm_nonlin.fit(X_train_2fts, y_train)
+best_svm_nonlin = svm_nonlin.best_estimator_
+print(svm_nonlin.best_params_)
+
+y_pred_train_2fts_svm_nonlin = best_svm_nonlin.predict(X_train_2fts)
+y_pred_proba_train_2fts_svm_nonlin = best_svm_nonlin.predict_proba(X_train_2fts)
+AUC_train_2fts_svm_nonlin = roc_auc_score(y_train, y_pred_proba_train_2fts_svm_nonlin[:,1])
+loss_train_2fts_svm_nonlin = hinge_loss(y_train, y_pred_train_2fts_svm_nonlin)
+
+y_pred_test_2fts_svm_nonlin = best_svm_nonlin.predict(X_test_2fts)
+y_pred_proba_test_2fts_svm_nonlin = best_svm_nonlin.predict_proba(X_test_2fts)
+AUC_test_2fts_svm_nonlin = roc_auc_score(y_test, y_pred_proba_test_2fts_svm_nonlin[:,1])
+loss_test_2fts_svm_nonlin = hinge_loss(y_test, y_pred_test_2fts_svm_nonlin)
+
+
+cnf_matrix_train = metrics.confusion_matrix(y_pred_train_2fts_svm_nonlin, y_train)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_train, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_train_2fts_svm_nonlin))
+print('The loss is: %.3f' % (loss_train_2fts_svm_nonlin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_train, y_pred_train_2fts_svm_nonlin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_train, y_pred_train_2fts_svm_nonlin))) + "%")
+
+
+cnf_matrix_test = metrics.confusion_matrix(y_pred_test_2fts_svm_nonlin, y_test)
+ax1 = plt.subplot()
+sns.heatmap(cnf_matrix_test, annot=True, xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+ax1.set(ylabel='True labels', xlabel='Predicted labels')
+plt.show()
+
+print('AUC is: %.3f' % (AUC_test_2fts_svm_nonlin))
+print('The loss is: %.3f' % (loss_test_2fts_svm_nonlin))
+print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pred_test_2fts_svm_nonlin, average='macro'))) + "%")
+print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_2fts_svm_nonlin))) + "%")
 
 print('hi')
+
 print('hi')
