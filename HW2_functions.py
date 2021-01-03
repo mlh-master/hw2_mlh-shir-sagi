@@ -91,13 +91,6 @@ def col_charts(X_train,X_test,remove_feat, y_train, y_test):
 def feat_lable(X_train,remove_feat, y_train):
     """
 
-    :param X_train: Dataframe of features of all train set patients
-    :param X_test: Dataframe of features of all test set patients
-    :param remove_feat: Features to emit from plots
-    :param y_train: Diagnosis of all train set patients
-    :param y_test: Diagnosis of all test set patients
-    :output: 1. Bar plot for all features of % of positive feature for both train and test set
-             2. Bar plot of % of positive diagnosis for train and test set
     """
     X_trn = X_train.copy()
     non_binary_feat = remove_feat
@@ -148,67 +141,6 @@ def feat_lable(X_train,remove_feat, y_train):
         ax.set_xticklabels(labels)
         ax.legend(prop={"size": 8}, loc='upper right')
     plt.show()
-
-    # fig, ax = plt.subplots()
-    # index = np.arange(16,91)
-    # neg_diag = [i for i, x in enumerate(y_train) if x == 0]
-    # pos_diag = [i for i, x in enumerate(y_train) if x == 1]
-    #
-    # bins = 100
-    # feat = 'Width'
-    # plt.hist(X_train['Age'].loc[neg_diag], bins, density=True, alpha=0.5, label='Normal')
-    # plt.hist(X_train[feat].loc[pos_diag], bins, density=True, alpha=0.5, label='Suspect')
-    # plt.xlabel('Histigram Width')
-    # plt.ylabel('Probabilty')
-    # plt.legend(loc='upper right')
-    # plt.show()
-    #
-    #
-    # X_train_neg = X_train.index.isin(neg_diag)
-    # X_train_pos = X_train.index.isin(pos_diag)
-    # Ages_count = Counter(X_train['Age'])
-    # Ages = list(Ages_count)
-    # Ages = sorted(Ages)
-    # Ages_pos = []
-    # Ages_neg = []
-    # for Age in Ages:
-    #     count_pos = 0
-    #     count_neg = 0
-    #     for idx in X_train['Age']:
-    #         if idx==Age and y_train[idx]==0:
-    #             count_neg = count_neg+1
-    #         elif idx==Age and y_train[idx]==1:
-    #             count_pos = count_pos+1
-    #     Ages_neg.append(count_neg)
-    #     Ages_pos.append(count_pos)
-
-    #
-    # bar_width = 0.35
-    # opacity = 0.8
-    # rects1 = plt.bar(index, train, bar_width,alpha=opacity,color='steelblue',label='Train set')
-    # rects2 = plt.bar(index + bar_width, test, bar_width,alpha=opacity,color='lightskyblue',label='Test set')
-    # plt.xlabel('Features')
-    # plt.ylabel('Positive %')
-    # plt.title('% of positive feature')
-    # plt.yim((1l, 100))
-    # plt.xticks(index + bar_width, range(1,len(feats)+1))
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.show()
-
-
-
-
-    # bins = 100
-    # feat1 = X_train[[non_binary_feat]]
-    # idx_1 = (y_train == 0).index[(y_train == 0)['Diagnoisis'] == True].tolist()
-    # idx_2 = (y_train == 1).index[(y_train == 1)['Diagnoisis'] == True].tolist()
-    # plt.hist(feat1.loc[idx_1], bins, density=True, alpha=0.5, label='Negative')
-    # plt.hist(feat1.loc[idx_2], bins, density=True, alpha=0.5, label='Positive')
-    # plt.xlabel('Histigram Width')
-    # plt.ylabel('Probabilty')
-    # plt.legend(loc='upper right')
-    # plt.show()
 
 
     return

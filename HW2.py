@@ -24,10 +24,23 @@ T1D_df.columns = ['Age', 'Gender', 'Increased Urination', 'Increased Thirst',
 
 # # T1D_df['Age'].value_counts().plot.bar()
 # # plt.show()
-# sns.barplot(x=T1D_df.Age.value_counts().index, y=T1D_df.Age.value_counts())
-# # sns.countplot(data=T1D_df, x='Age', order=T1D_df.Age.value_counts().index)
-# # ax = sns.barplot(x="Age", y=T1D_df.Age.value_counts(), hue="Diagnosis", data=T1D_df)
-# plt.show()
+# blabla = T1D_df.loc[T1D_df['Diagnosis'] == 1]
+Age_pos = sns.barplot(x=T1D_df.loc[T1D_df['Diagnosis'] == 1].Age.value_counts().index, y=T1D_df.loc[T1D_df['Diagnosis'] == 1].Age.value_counts(),palette="Blues_d")
+Age_pos.set_xticklabels(Age_pos.get_xticklabels(),
+                          rotation=90,)
+Age_pos.set_title('Age distribution of positive diagnosis population')
+Age_pos.set_ylabel('Count')
+Age_pos.set_xlabel('Age')
+plt.show()
+
+Age_neg = sns.barplot(x=T1D_df.loc[T1D_df['Diagnosis'] == 0].Age.value_counts().index, y=T1D_df.loc[T1D_df['Diagnosis'] == 0].Age.value_counts(),palette="Blues_d")
+Age_neg.set_xticklabels(Age_neg.get_xticklabels(),
+                          rotation=90)
+Age_pos.set_title('Age distribution of negative diagnosis population')
+Age_pos.set_ylabel('Count')
+Age_pos.set_xlabel('Age')
+plt.show()
+
 
 
 T1D_feats = T1D_df.copy()
@@ -246,6 +259,7 @@ print("F1 score is: " + str("{0:.2f}".format(100 * metrics.f1_score(y_test, y_pr
 print("Accuracy is: " + str("{0:.2f}".format(100 * metrics.accuracy_score(y_test, y_pred_test_rfc))) + "%")
 
 feature_importance = clf.feature_importances_
+sns.barplot(x=col_names , y=feature_importance)
 print(feature_importance)
 
 
